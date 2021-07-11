@@ -290,6 +290,7 @@ new Vue({
   mounted() {
     this.twitchToken = new URLSearchParams(window.location.hash.substr(1)).get('access_token') || null
     if (this.twitchToken) {
+      window.location.hash = '' // Remove token from hash for security
       this.initChart()
     }
   },
