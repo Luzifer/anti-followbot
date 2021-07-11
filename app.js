@@ -1,4 +1,4 @@
-/* global axios, moment, Vue */
+/* global axios, moment, Highcharts, Vue */
 
 const twitchClientID = 'kf1i6vf07ihojqei5autfb52vwl586'
 
@@ -43,6 +43,7 @@ new Vue({
     },
 
     bucketSize() {
+      /* eslint-disable sort-keys */
       const tickSettings = {
         604800: 600,
         86400: 120,
@@ -53,6 +54,7 @@ new Vue({
         300: 5,
         0: 1,
       }
+      /* eslint-enable sort-keys */
 
       const timerangeSecs = Math.round((this.zoomArea.max - this.zoomArea.min) / 1000)
       for (const thresh of Object.keys(tickSettings).sort((b, a) => Number(a) - Number(b))) {
@@ -80,12 +82,19 @@ new Vue({
           enabled: false,
         },
 
-        title: {
-          text: 'Follows over Time',
-        },
+        series: [
+          {
+            data: this.followCounts,
+            name: '',
+          },
+        ],
 
         subtitle: {
           text: 'Click and drag in the plot area to zoom in / Shift + Drag to pan around',
+        },
+
+        title: {
+          text: 'Follows over Time',
         },
 
         xAxis: {
@@ -104,13 +113,6 @@ new Vue({
             text: '',
           },
         },
-
-        series: [
-          {
-            name: '',
-            data: this.followCounts,
-          },
-        ],
       }
     },
 
@@ -173,15 +175,15 @@ new Vue({
       protectedIDs: [],
       timespan: 2,
       timespanOpts: [
-        { value: 2, text: '2 days' },
-        { value: 7, text: '7 days' },
-        { value: 14, text: '14 days' },
-        { value: 30, text: '30 days' },
+        { text: '2 days', value: 2 },
+        { text: '7 days', value: 7 },
+        { text: '14 days', value: 14 },
+        { text: '30 days', value: 30 },
       ],
 
+      twitchAuthorizedUserID: null,
       twitchToken: null,
       twitchUserID: null,
-      twitchAuthorizedUserID: null,
       zoomArea: { max: 0, min: 0 },
     }
   },
@@ -204,7 +206,7 @@ new Vue({
           }
 
           axios.put(`https://api.twitch.tv/helix/users/blocks?target_user_id=${toBlock[0].from_id}`, null, this.axiosOptions)
-            .then(resp => {
+            .then(() => {
               Vue.set(toBlock[0], 'blocked', true)
               window.setTimeout(() => fn(), 100)
             })
