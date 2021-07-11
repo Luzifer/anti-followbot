@@ -2,7 +2,7 @@
 
 const twitchClientID = 'kf1i6vf07ihojqei5autfb52vwl586'
 
-Vue.config.devtools = true
+Vue.config.devtools = window.localStorage?.getItem('enabled_devtools') === 'true'
 new Vue({
 
   computed: {
