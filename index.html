@@ -1,0 +1,256 @@
+<html>
+
+  <title>Anti-FollowBot</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/combine/npm/bootstrap@4/dist/css/bootstrap.min.css,npm/bootstrap-vue@2/dist/bootstrap-vue.min.css,npm/bootswatch@5/dist/darkly/bootstrap.min.css">
+  <script src="https://kit.fontawesome.com/0caf4eb225.js" crossorigin="anonymous"></script>
+
+  <style>
+    #chart {
+      height: 100%;
+      left:0;
+      position: absolute;
+      top: 0;
+      width: 100%;
+    }
+    .embed-responsive-custom::before {
+      padding-top: calc(6 / 21 * 100%);
+    }
+  </style>
+
+  <div id="app">
+    <b-container>
+      <template v-if="twitchUserID">
+
+        <b-row class="my-3" v-if="!blockRunStarted">
+          <b-col>
+            <div class="embed-responsive embed-responsive-custom">
+              <div id="chart"></div>
+            </div>
+          </b-col>
+        </b-row>
+
+        <b-row class="my-3">
+          <b-col cols="7">
+            <b-card
+              no-body
+            >
+              <b-card-header class="d-flex justify-content-between">
+                Filtered followers
+                <b-badge>
+                  {{ filteredFollowers.length }}
+                </b-badge>
+              </b-card-header>
+
+              <b-list-group
+                flush
+                v-if="displayFollowers"
+              >
+                <b-list-group-item
+                  class="d-flex justify-content-between align-items-center"
+                  v-for="follower in filteredFollowers"
+                  :key="follower.from_id"
+                >
+                  <span>
+                    <i class="fas fa-fw fa-user mr-1" v-if="!follower.blocked"></i>
+                    <i class="fas fa-fw fa-user-slash mr-1 text-danger" v-else></i>
+                    {{ follower.from_name }}
+                  </span>
+                  <span>
+                    <b-badge class="mr-2">
+                      {{ moment(follower.followed_at).format('lll') }}
+                    </b-badge>
+                    <b-btn-group size="sm">
+                      <b-btn
+                        :disabled="actionsDisabled || protectedIDs.indexOf(follower.from_id) > -1"
+                        title="Block"
+                        variant="danger"
+                      >
+                        <i class="fas fa-fw fa-ban"></i>
+                      </b-btn>
+                      <b-btn
+                        @click="toggleProtect(follower.from_id)"
+                        :disabled="actionsDisabled"
+                        title="Protect from actions"
+                        :variant="protectedIDs.indexOf(follower.from_id) > -1 ? 'warning' : 'success'"
+                      >
+                        <i class="fas fa-fw fa-shield"></i>
+                      </b-btn>
+                    </b-btn-group>
+                  </span>
+                </b-list-group-item>
+              </b-list-group>
+            </b-card>
+          </b-col>
+
+          <b-col cols="5">
+            <b-card
+              header="Settings"
+            >
+
+              <b-form-group
+                label="Timespan to load"
+                label-for="timespan"
+              >
+                <b-form-select
+                  :disabled="blockRunStarted"
+                  id="timespan"
+                  :options="timespanOpts"
+                  v-model="timespan"
+                ></b-form-select>
+              </b-form-group>
+
+              <p>
+                <i class="fas fa-fw fa-info-circle mr-1"></i>
+                Current zoom level: <strong>{{ bucketSize / 1000 }}s</strong> per bar.
+              </p>
+
+              <b-form-checkbox
+                class="mt-2"
+                v-model="displayFollowers"
+                switch
+              >
+                Display followers in the left column<br>
+                <small>
+                  <i class="fas fa-fw fa-exclamation-triangle mr-1 text-warning"></i>
+                  Many displayed followers might slow or crash your browser, filter through the chart first!
+                </small>
+              </b-form-checkbox>
+
+            </b-card>
+            <b-card
+              class="mt-3"
+              header="Actions"
+            >
+
+              <b-row>
+                <b-col>
+                  <b-form-group
+                    label="Affected Users"
+                    label-for="affectedUsers"
+                  >
+                    <b-form-input
+                      class="text-right"
+                      disabled
+                      id="affectedUsers"
+                      readonly
+                      :value="affectedUsers"
+                    />
+                  </b-form-group>
+                </b-col>
+                <b-col>
+                  <b-form-group
+                    label="Protected Users"
+                    label-for="protectedUsers"
+                  >
+                    <b-form-input
+                      class="text-right"
+                      disabled
+                      id="protectedUsers"
+                      readonly
+                      :value="protectedUsers"
+                    />
+                  </b-form-group>
+                </b-col>
+              </b-row>
+
+              <b-button-group
+                  class="w-100"
+                  v-if="!blockRunStarted"
+              >
+                <b-btn
+                  class="w-50"
+                  @click.prevent="blockButtonUnlocked = true"
+                  :disabled="actionsDisabled || affectedUsers === 0"
+                  variant="primary"
+                  v-if="!blockButtonUnlocked"
+                >
+                  <i class="fas fa-fw fa-unlock"></i>
+                  Unlock Block
+                </b-btn>
+                <b-btn
+                  class="w-50"
+                  @click="executeBlocks"
+                  :disabled="actionsDisabled || affectedUsers === 0"
+                  variant="danger"
+                  v-else
+                >
+                  <i class="fas fa-fw fa-ban"></i>
+                  Block Users
+                </b-btn>
+                <b-btn
+                  @click="protectedIDs = []"
+                  class="w-50"
+                  variant="warning"
+                >
+                  <i class="fas fa-fw fa-broom"></i>
+                  Clear Protected
+                </b-btn>
+              </b-button-group>
+
+              <b-progress
+                :max="affectedUsers"
+                v-else
+              >
+                <b-progress-bar
+                  :label="`${((blockedUsers / affectedUsers) * 100).toFixed(1)}%`"
+                  :value="blockedUsers"
+                ></b-progress-bar>
+              </b-progress>
+
+              <p
+                class="mt-2 mb-0"
+                v-if="blockRunStarted && affectedUsers === blockedUsers"
+              >
+                <i class="fas fa-fw fa-info-circle mr-1 text-success"></i>
+                Blocks are now finished. Please reload this site and do a new analysis.
+                (It might take some minutes for Twitch to have the follow removed!)
+              </p>
+
+            </b-card>
+            <b-card
+              class="mt-3"
+              header="Analyze another User"
+              v-if="!blockRunStarted"
+            >
+
+              <p>
+                You can analyze another users followers but take no actions for them. They need to take actions themselves&hellip;
+              </p>
+              <b-input-group prepend="Username">
+                <b-form-input
+                  v-on:keyup.enter="fetchUserID(overrideUser)"
+                  v-model="overrideUser"
+                ></b-form-input>
+                <b-input-group-append>
+                  <b-button
+                    @click="fetchUserID(overrideUser)"
+                    variant="primary"
+                  >
+                    <i class="fas fa-download"></i>
+                    Fetch User
+                  </b-button>
+                </b-input-group-append>
+              </b-input-group>
+
+            </b-card>
+          </b-col>
+        </b-row>
+
+      </template>
+      <template v-else>
+
+        <b-row class="my-3">
+          <b-col class="text-center">
+            <b-btn :href="authURL">
+              Connect with Twitch
+            </b-btn>
+          </b-col>
+        </b-row>
+
+      </template>
+    </b-container>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/combine/npm/axios@0.21.1,npm/vue@2,npm/bootstrap-vue@2/dist/bootstrap-vue.min.js,npm/highcharts@9,npm/highcharts@9/themes/dark-unica.min.js,npm/moment@2/moment.min.js"></script>
+  <script type="module" src="app.js"></script>
+</html>
