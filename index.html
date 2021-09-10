@@ -12,6 +12,17 @@
       top: 0;
       width: 100%;
     }
+    .btn-twitch {
+      background-color: #6441a5;
+      border-color: #6441a5;
+      color: white;
+    }
+    .carousel-caption {
+      background-color: rgba(0,0,0,0.7);
+      border-radius: 0.5rem;
+      left: 5%;
+      right: 5%;
+    }
     .embed-responsive-custom::before {
       padding-top: calc(6 / 21 * 100%);
     }
@@ -239,9 +250,34 @@
       </template>
       <template v-else>
 
+        <b-row class="justify-content-center mt-3 mb-5">
+          <b-col cols="8">
+            <b-carousel
+              id="carousel-fade"
+              style="text-shadow: 0px 0px 5px #000"
+              fade
+              indicators
+            >
+              <b-carousel-slide
+                caption="Detect a follow-bot in the chart"
+                img-src="screenshots/followerbot.png"
+              ></b-carousel-slide>
+              <b-carousel-slide
+                caption="Filter down by time"
+                img-src="screenshots/followerbot_filtered.png"
+              ></b-carousel-slide>
+              <b-carousel-slide
+                caption="Protect regular followers and block bots"
+                img-src="screenshots/block_prepared.png"
+              ></b-carousel-slide>
+            </b-carousel>
+          </b-col>
+        </b-row>
+
         <b-row class="my-3">
           <b-col class="text-center">
-            <b-btn :href="authURL">
+            <b-btn :href="authURL" variant="twitch">
+              <i class="fab fa-twitch fa-fw mr-1"></i>
               Connect with Twitch
             </b-btn>
           </b-col>
